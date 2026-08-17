@@ -3,8 +3,11 @@ import app from './app';
 
 const PORT = Number(process.env.PORT) || 3000;
 
-const server = app.listen(PORT, () => {
+const HOST = '0.0.0.0';
+
+const server = app.listen(PORT, HOST, () => {
   console.log(`✅  RiceMate API is running on http://localhost:${PORT}`);
+  console.log(`    Network     : http://10.34.1.39:${PORT}`);
   console.log(`    Environment : ${process.env.NODE_ENV ?? 'development'}`);
   console.log(`    Health check: http://localhost:${PORT}/health`);
 });

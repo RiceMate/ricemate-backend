@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import router from './routes';
 
 const app = express();
 
@@ -32,16 +33,8 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ─── API Routes (to be added in next phase) ──────────────────────────────────
-// app.use('/api/v1/auth', authRouter);
-// app.use('/api/v1/users', userRouter);
-// app.use('/api/v1/income-sources', incomeSourceRouter);
-// app.use('/api/v1/income', incomeInstanceRouter);
-// app.use('/api/v1/expenses', expenseRouter);
-// app.use('/api/v1/expense-templates', expenseTemplateRouter);
-// app.use('/api/v1/units', unitRouter);
-// app.use('/api/v1/unit-categories', unitCategoryRouter);
-// app.use('/api/v1/audit-logs', auditLogRouter);
+// ─── API Routes ──────────────────────────────────────────────────────────────
+app.use('/api/v1', router);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 app.use((_req, res) => {
@@ -49,7 +42,12 @@ app.use((_req, res) => {
 });
 
 // ─── Global Error Handler ────────────────────────────────────────────────────
+import { AppError } from './utils/errors';
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json({ success: false, message: err.message });
+    return;
+  }
   console.error('[Error]', err.message, err.stack);
   res.status(500).json({
     success: false,
