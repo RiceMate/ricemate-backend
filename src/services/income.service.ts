@@ -27,17 +27,73 @@ function parseDate(dateStr: string): Date {
 // ─── Service Functions ────────────────────────────────────────────────────────
 
 /**
- * Returns all active income sources with their default parcel price.
+ * Returns income sources with their default parcel price.
  */
-export async function getActiveSources() {
+export async function getActiveSources(includeInactive = false) {
   return prisma.incomeSource.findMany({
-    where: { isActive: true },
+    where: includeInactive ? {} : { isActive: true },
     orderBy: { id: 'asc' },
     select: {
       id: true,
       name: true,
       description: true,
       defaultParcelPrice: true,
+      isActive: true,
+    },
+  });
+}
+
+/**
+ * Creates a new income source.
+ */
+export async function createIncomeSource(
+  data: {
+    name: string;
+    description?: string;
+    defaultParcelPrice?: number;
+    isActive?: boolean;
+  },
+  userId: number
+) {
+  if (!data.name?.trim()) {
+    throw new AppError('Income source name is required.', 400);
+  }
+
+  return prisma.incomeSource.create({
+    data: {
+      name: data.name.trim(),
+      description: data.description?.trim() || null,
+      defaultParcelPrice: new Decimal(data.defaultParcelPrice ?? 170),
+      isActive: data.isActive ?? true,
+      createdById: userId,
+    },
+  });
+}
+
+/**
+ * Updates an existing income source.
+ */
+export async function updateIncomeSource(
+  id: number,
+  data: {
+    name?: string;
+    description?: string;
+    defaultParcelPrice?: number;
+    isActive?: boolean;
+  },
+  userId: number
+) {
+  const existing = await prisma.incomeSource.findUnique({ where: { id } });
+  if (!existing) throw new AppError(`Income source ${id} not found.`, 404);
+
+  return prisma.incomeSource.update({
+    where: { id },
+    data: {
+      ...(data.name !== undefined ? { name: data.name.trim() } : {}),
+      ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
+      ...(data.defaultParcelPrice !== undefined ? { defaultParcelPrice: new Decimal(data.defaultParcelPrice) } : {}),
+      ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+      updatedById: userId,
     },
   });
 }

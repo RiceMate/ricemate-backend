@@ -3,6 +3,8 @@ import { requireAuth } from '../middleware/auth';
 import {
   getRootCategories,
   getCategoryChildren,
+  createCategory,
+  updateCategory,
   checkExpenses,
   submitExpense,
   updateExpense,
@@ -13,14 +15,16 @@ const router = Router();
 
 router.use(requireAuth);
 
-// Categories (no auth needed conceptually, but kept consistent)
-router.get('/categories',              getRootCategories);
+// Categories
+router.get('/categories', getRootCategories);
 router.get('/categories/:id/children', getCategoryChildren);
+router.post('/categories', createCategory);
+router.put('/categories/:id', updateCategory);
 
 // Expense instances
-router.get('/check',   checkExpenses);    // ?date=YYYY-MM-DD
-router.post('/',       submitExpense);
-router.put('/:id',     updateExpense);
-router.delete('/:id',  deleteExpense);
+router.get('/check', checkExpenses); // ?date=YYYY-MM-DD
+router.post('/', submitExpense);
+router.put('/:id', updateExpense);
+router.delete('/:id', deleteExpense);
 
 export default router;

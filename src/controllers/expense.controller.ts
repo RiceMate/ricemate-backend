@@ -4,9 +4,10 @@ import { sendSuccess, sendCreated, sendError } from '../utils/response';
 import { AppError } from '../utils/errors';
 
 // GET /api/v1/expenses/categories
-export async function getRootCategories(_req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function getRootCategories(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const categories = await expenseService.getRootCategories();
+    const includeInactive = req.query['includeInactive'] === 'true';
+    const categories = await expenseService.getRootCategories(includeInactive);
     sendSuccess(res, categories);
   } catch (err) { next(err); }
 }
@@ -15,9 +16,55 @@ export async function getRootCategories(_req: Request, res: Response, next: Next
 export async function getCategoryChildren(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const id = parseInt(req.params['id'] as string, 10);
-    if (isNaN(id)) { sendError(res, 'Invalid category id.', 400); return; }
-    const children = await expenseService.getCategoryChildren(id);
+    if (isNaN(id)) { sendError(res, 'Invalid category ID.', 400); return; }
+    const includeInactive = req.query['includeInactive'] === 'true';
+    const children = await expenseService.getCategoryChildren(id, includeInactive);
     sendSuccess(res, children);
+  } catch (err) { next(err); }
+}
+
+// POST /api/v1/expenses/categories
+export async function createCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { name, description, parentId, isActive } = req.body;
+    if (!name) {
+      sendError(res, 'Category name is required.', 400);
+      return;
+    }
+    const created = await expenseService.createExpenseCategory(
+      {
+        name,
+        description,
+        parentId: parentId ? Number(parentId) : null,
+        isActive: isActive !== undefined ? Boolean(isActive) : true,
+      },
+      req.userId
+    );
+    sendCreated(res, created, 'Category created successfully.');
+  } catch (err) {
+    if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
+    next(err);
+  }
+}
+
+// PUT /api/v1/expenses/categories/:id
+export async function updateCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = parseInt(req.params['id'] as string, 10);
+    if (isNaN(id)) { sendError(res, 'Invalid category ID.', 400); return; }
+
+    const { name, description, parentId, isActive } = req.body;
+    const updated = await expenseService.updateExpenseCategory(
+      id,
+      {
+        name,
+        description,
+        parentId: parentId !== undefined ? (parentId ? Number(parentId) : null) : undefined,
+        isActive: isActive !== undefined ? Boolean(isActive) : undefined,
+      },
+      req.userId
+    );
+    sendSuccess(res, updated, 'Category updated successfully.');
   } catch (err) {
     if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
     next(err);
@@ -37,14 +84,23 @@ export async function checkExpenses(req: Request, res: Response, next: NextFunct
 // POST /api/v1/expenses
 export async function submitExpense(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const dto = req.body as {
-      date: string; expenseId: number; quantity: number; unitPrice: number; amount: number; description?: string;
-    };
-    if (!dto.date || !dto.expenseId || dto.quantity === undefined || dto.unitPrice === undefined || dto.amount === undefined) {
-      sendError(res, '`date`, `expenseId`, `quantity`, `unitPrice`, and `amount` are required.', 400); return;
+    const { date, expenseId, expenseTemplateId, quantity, unitPrice, amount, description } = req.body;
+    if (!date || !expenseId || quantity == null || unitPrice == null || amount == null) {
+      sendError(res, 'date, expenseId, quantity, unitPrice, amount are required.', 400); return;
     }
-    const created = await expenseService.submitExpense(dto, req.userId);
-    sendCreated(res, created, 'Expense submitted successfully.');
+    const created = await expenseService.submitExpense(
+      {
+        date,
+        expenseId: Number(expenseId),
+        expenseTemplateId: expenseTemplateId ? Number(expenseTemplateId) : undefined,
+        quantity: Number(quantity),
+        unitPrice: Number(unitPrice),
+        amount: Number(amount),
+        description,
+      },
+      req.userId
+    );
+    sendCreated(res, created, 'Expense created successfully.');
   } catch (err) {
     if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
     next(err);
@@ -55,8 +111,21 @@ export async function submitExpense(req: Request, res: Response, next: NextFunct
 export async function updateExpense(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const id = parseInt(req.params['id'] as string, 10);
-    if (isNaN(id)) { sendError(res, 'Invalid expense id.', 400); return; }
-    const updated = await expenseService.updateExpense(id, req.body, req.userId);
+    if (isNaN(id)) { sendError(res, 'Invalid ID.', 400); return; }
+    const { date, expenseId, expenseTemplateId, quantity, unitPrice, amount, description } = req.body;
+    const updated = await expenseService.updateExpense(
+      id,
+      {
+        date,
+        expenseId: expenseId ? Number(expenseId) : undefined,
+        expenseTemplateId: expenseTemplateId ? Number(expenseTemplateId) : undefined,
+        quantity: quantity != null ? Number(quantity) : undefined,
+        unitPrice: unitPrice != null ? Number(unitPrice) : undefined,
+        amount: amount != null ? Number(amount) : undefined,
+        description,
+      },
+      req.userId
+    );
     sendSuccess(res, updated, 'Expense updated successfully.');
   } catch (err) {
     if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
@@ -68,7 +137,7 @@ export async function updateExpense(req: Request, res: Response, next: NextFunct
 export async function deleteExpense(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const id = parseInt(req.params['id'] as string, 10);
-    if (isNaN(id)) { sendError(res, 'Invalid expense id.', 400); return; }
+    if (isNaN(id)) { sendError(res, 'Invalid ID.', 400); return; }
     const result = await expenseService.deleteExpense(id);
     sendSuccess(res, result, 'Expense deleted successfully.');
   } catch (err) {

@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
 import {
   listIncomeSources,
+  createIncomeSource,
+  updateIncomeSource,
   checkIncome,
   submitIncome,
   overrideIncome,
@@ -14,6 +16,8 @@ router.use(requireAuth);
 
 // Income Sources
 router.get('/sources', listIncomeSources);
+router.post('/sources', createIncomeSource);
+router.put('/sources/:id', updateIncomeSource);
 
 // Income Instances
 router.get('/check', checkIncome);         // ?date=YYYY-MM-DD

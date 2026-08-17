@@ -24,37 +24,113 @@ function parseDate(dateStr: string): Date {
 // ─── Service Functions ────────────────────────────────────────────────────────
 
 /**
- * Returns top-level expense categories (parentId = null, isActive = true).
+ * Returns top-level expense categories (parentId = null).
  */
-export async function getRootCategories() {
+export async function getRootCategories(includeInactive = false) {
   return prisma.expense.findMany({
-    where: { parentId: null, isActive: true },
+    where: {
+      parentId: null,
+      ...(includeInactive ? {} : { isActive: true }),
+    },
     orderBy: { name: 'asc' },
     select: {
       id: true,
       name: true,
       description: true,
-      _count: { select: { children: { where: { isActive: true } } } },
+      isActive: true,
+      _count: {
+        select: {
+          children: includeInactive ? true : { where: { isActive: true } },
+        },
+      },
     },
   });
 }
 
 /**
- * Returns active children of a given expense category.
- * The `hasChildren` flag tells the frontend whether to drill down further.
+ * Returns children of a given expense category.
  */
-export async function getCategoryChildren(parentId: number) {
+export async function getCategoryChildren(parentId: number, includeInactive = false) {
   const parent = await prisma.expense.findUnique({ where: { id: parentId } });
   if (!parent) throw new AppError(`Expense category ${parentId} not found.`, 404);
 
   return prisma.expense.findMany({
-    where: { parentId, isActive: true },
+    where: {
+      parentId,
+      ...(includeInactive ? {} : { isActive: true }),
+    },
     orderBy: { name: 'asc' },
     select: {
       id: true,
       name: true,
       description: true,
-      _count: { select: { children: { where: { isActive: true } } } },
+      isActive: true,
+      parentId: true,
+      _count: {
+        select: {
+          children: includeInactive ? true : { where: { isActive: true } },
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Creates a new expense category.
+ */
+export async function createExpenseCategory(
+  data: {
+    name: string;
+    description?: string;
+    parentId?: number | null;
+    isActive?: boolean;
+  },
+  userId: number
+) {
+  if (!data.name?.trim()) {
+    throw new AppError('Category name is required.', 400);
+  }
+
+  if (data.parentId) {
+    const parent = await prisma.expense.findUnique({ where: { id: data.parentId } });
+    if (!parent) throw new AppError(`Parent category ${data.parentId} not found.`, 404);
+  }
+
+  return prisma.expense.create({
+    data: {
+      name: data.name.trim(),
+      description: data.description?.trim() || null,
+      parentId: data.parentId ?? null,
+      isActive: data.isActive ?? true,
+      createdById: userId,
+    },
+  });
+}
+
+/**
+ * Updates an existing expense category.
+ */
+export async function updateExpenseCategory(
+  id: number,
+  data: {
+    name?: string;
+    description?: string;
+    parentId?: number | null;
+    isActive?: boolean;
+  },
+  userId: number
+) {
+  const existing = await prisma.expense.findUnique({ where: { id } });
+  if (!existing) throw new AppError(`Expense category ${id} not found.`, 404);
+
+  return prisma.expense.update({
+    where: { id },
+    data: {
+      ...(data.name !== undefined ? { name: data.name.trim() } : {}),
+      ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
+      ...(data.parentId !== undefined ? { parentId: data.parentId } : {}),
+      ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+      updatedById: userId,
     },
   });
 }
