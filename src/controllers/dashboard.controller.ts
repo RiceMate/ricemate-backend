@@ -67,3 +67,15 @@ export async function getExpenseBreakdown(req: Request, res: Response, next: Nex
     sendSuccess(res, data);
   } catch (err) { next(err); }
 }
+
+// GET /api/v1/dashboard/wastage-vs-sales?date=YYYY-MM-DD OR ?year=YYYY&month=MM OR ?year=YYYY
+export async function getWastageVsSales(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const date = req.query['date'] as string | undefined;
+    const year = req.query['year'] ? parseInt(req.query['year'] as string, 10) : undefined;
+    const month = req.query['month'] ? parseInt(req.query['month'] as string, 10) : undefined;
+
+    const data = await dashboardService.getWastageVsSalesSummary({ date, year, month });
+    sendSuccess(res, data);
+  } catch (err) { next(err); }
+}

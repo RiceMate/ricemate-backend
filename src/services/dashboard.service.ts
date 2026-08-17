@@ -306,3 +306,124 @@ export async function getExpenseBreakdownSummary(params: { date?: string; year?:
 
   return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
 }
+
+/**
+ * Returns comparison of sales parcel counts vs wastage parcel counts for each income source for a given period.
+ */
+export async function getWastageVsSalesSummary(params: { date?: string; year?: number; month?: number }) {
+  const { start, end } = resolveDateRange(params);
+
+  // Fetch sales (IncomeInstance)
+  const incomeInstances = await prisma.incomeInstance.findMany({
+    where: {
+      date: { gte: start, lte: end },
+    },
+    include: {
+      source: {
+        select: {
+          id: true,
+          name: true,
+          nameSi: true,
+          unit: {
+            select: {
+              symbol: true,
+              symbolSi: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Fetch wastage (Wastage)
+  const wastageInstances = await prisma.wastage.findMany({
+    where: {
+      date: { gte: start, lte: end },
+      sourceId: { not: null },
+    },
+    include: {
+      source: {
+        select: {
+          id: true,
+          name: true,
+          nameSi: true,
+          unit: {
+            select: {
+              symbol: true,
+              symbolSi: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const map = new Map<number, {
+    sourceId: number;
+    name: string;
+    nameSi: string | null;
+    soldParcels: number;
+    wastedParcels: number;
+    totalParcels: number;
+    soldAmount: number;
+    wastedAmount: number;
+    unitSymbol: string;
+    unitSymbolSi: string | null;
+  }>();
+
+  for (const inst of incomeInstances) {
+    const sourceId = inst.sourceId;
+    const existing = map.get(sourceId);
+    const count = inst.parcelCount || 0;
+    const amt = toNum(inst.amount);
+
+    if (existing) {
+      existing.soldParcels += count;
+      existing.soldAmount += amt;
+      existing.totalParcels += count;
+    } else {
+      map.set(sourceId, {
+        sourceId,
+        name: inst.source.name,
+        nameSi: inst.source.nameSi,
+        soldParcels: count,
+        wastedParcels: 0,
+        totalParcels: count,
+        soldAmount: amt,
+        wastedAmount: 0,
+        unitSymbol: inst.source.unit?.symbol || 'parcel',
+        unitSymbolSi: inst.source.unit?.symbolSi || 'පාර්සල්',
+      });
+    }
+  }
+
+  for (const inst of wastageInstances) {
+    if (!inst.sourceId || !inst.source) continue;
+    const sourceId = inst.sourceId;
+    const existing = map.get(sourceId);
+    const count = inst.parcelCount || 0;
+    const amt = toNum(inst.amount);
+
+    if (existing) {
+      existing.wastedParcels += count;
+      existing.wastedAmount += amt;
+      existing.totalParcels += count;
+    } else {
+      map.set(sourceId, {
+        sourceId,
+        name: inst.source.name,
+        nameSi: inst.source.nameSi,
+        soldParcels: 0,
+        wastedParcels: count,
+        totalParcels: count,
+        soldAmount: 0,
+        wastedAmount: amt,
+        unitSymbol: inst.source.unit?.symbol || 'parcel',
+        unitSymbolSi: inst.source.unit?.symbolSi || 'පාර්සල්',
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.totalParcels - a.totalParcels);
+}
+
