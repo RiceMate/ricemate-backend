@@ -14,19 +14,27 @@ declare global {
   }
 }
 
+let cachedSystemUserId: number | null = null;
+
 export async function requireAuth(
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
+    if (cachedSystemUserId) {
+      req.userId = cachedSystemUserId;
+      return next();
+    }
     const systemUser = await prisma.user.findFirstOrThrow({
       where: { email: 'system@ricemate.local' },
       select: { id: true },
     });
+    cachedSystemUserId = systemUser.id;
     req.userId = systemUser.id;
     next();
-  } catch {
-    res.status(500).json({ success: false, message: 'System user not found. Run the seed script.' });
+  } catch (err: any) {
+    console.error('requireAuth error:', err?.message || err);
+    res.status(500).json({ success: false, message: 'System user lookup error. Check database connectivity.' });
   }
 }

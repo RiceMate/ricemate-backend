@@ -43,3 +43,27 @@ export async function getYearly(req: Request, res: Response, next: NextFunction)
     sendSuccess(res, data);
   } catch (err) { next(err); }
 }
+
+// GET /api/v1/dashboard/income-sources?date=YYYY-MM-DD OR ?year=YYYY&month=MM OR ?year=YYYY
+export async function getIncomeSources(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const date = req.query['date'] as string | undefined;
+    const year = req.query['year'] ? parseInt(req.query['year'] as string, 10) : undefined;
+    const month = req.query['month'] ? parseInt(req.query['month'] as string, 10) : undefined;
+
+    const data = await dashboardService.getIncomeSourcesSummary({ date, year, month });
+    sendSuccess(res, data);
+  } catch (err) { next(err); }
+}
+
+// GET /api/v1/dashboard/expense-breakdown?date=YYYY-MM-DD OR ?year=YYYY&month=MM OR ?year=YYYY
+export async function getExpenseBreakdown(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const date = req.query['date'] as string | undefined;
+    const year = req.query['year'] ? parseInt(req.query['year'] as string, 10) : undefined;
+    const month = req.query['month'] ? parseInt(req.query['month'] as string, 10) : undefined;
+
+    const data = await dashboardService.getExpenseBreakdownSummary({ date, year, month });
+    sendSuccess(res, data);
+  } catch (err) { next(err); }
+}

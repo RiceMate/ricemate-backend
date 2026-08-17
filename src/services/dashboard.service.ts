@@ -137,3 +137,154 @@ export async function getYearlySummary(year: number) {
 
   return result;
 }
+
+/**
+ * Resolves Date range { start, end } based on params (date OR year+month OR year)
+ */
+function resolveDateRange(params: { date?: string; year?: number; month?: number }): { start: Date; end: Date } {
+  if (params.date) {
+    const d = utcDate(params.date);
+    return { start: d, end: d };
+  }
+  if (params.year && params.month) {
+    const start = new Date(Date.UTC(params.year, params.month - 1, 1));
+    const end = new Date(Date.UTC(params.year, params.month, 0));
+    return { start, end };
+  }
+  if (params.year) {
+    const start = new Date(Date.UTC(params.year, 0, 1));
+    const end = new Date(Date.UTC(params.year, 11, 31));
+    return { start, end };
+  }
+  // Default to today
+  const today = utcDate(new Date().toISOString().slice(0, 10));
+  return { start: today, end: today };
+}
+
+/**
+ * Returns income broken down by income sources for a given period.
+ */
+export async function getIncomeSourcesSummary(params: { date?: string; year?: number; month?: number }) {
+  const { start, end } = resolveDateRange(params);
+
+  const instances = await prisma.incomeInstance.findMany({
+    where: {
+      date: { gte: start, lte: end },
+    },
+    include: {
+      source: {
+        select: {
+          id: true,
+          name: true,
+          nameSi: true,
+          unit: {
+            select: {
+              symbol: true,
+              symbolSi: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const map = new Map<number, {
+    sourceId: number;
+    name: string;
+    nameSi: string | null;
+    amount: number;
+    parcelCount: number;
+    unitSymbol: string;
+    unitSymbolSi: string | null;
+  }>();
+
+  for (const inst of instances) {
+    const sourceId = inst.sourceId;
+    const existing = map.get(sourceId);
+    const amt = toNum(inst.amount);
+    const count = inst.parcelCount;
+
+    if (existing) {
+      existing.amount += amt;
+      existing.parcelCount += count;
+    } else {
+      map.set(sourceId, {
+        sourceId,
+        name: inst.source.name,
+        nameSi: inst.source.nameSi,
+        amount: amt,
+        parcelCount: count,
+        unitSymbol: inst.source.unit?.symbol || 'parcel',
+        unitSymbolSi: inst.source.unit?.symbolSi || 'පාර්සල්',
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
+}
+
+/**
+ * Returns expenses broken down by categories for a given period.
+ */
+export async function getExpenseBreakdownSummary(params: { date?: string; year?: number; month?: number }) {
+  const { start, end } = resolveDateRange(params);
+
+  const instances = await prisma.expenseInstance.findMany({
+    where: {
+      date: { gte: start, lte: end },
+    },
+    include: {
+      expense: {
+        select: {
+          id: true,
+          name: true,
+          nameSi: true,
+        },
+      },
+      expenseTemplate: {
+        select: {
+          unit: {
+            select: {
+              symbol: true,
+              symbolSi: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const map = new Map<number, {
+    expenseId: number;
+    name: string;
+    nameSi: string | null;
+    amount: number;
+    quantity: number;
+    unitSymbol: string;
+    unitSymbolSi: string | null;
+  }>();
+
+  for (const inst of instances) {
+    const expenseId = inst.expenseId;
+    const existing = map.get(expenseId);
+    const amt = toNum(inst.amount);
+    const qty = toNum(inst.quantity);
+
+    if (existing) {
+      existing.amount += amt;
+      existing.quantity += qty;
+    } else {
+      map.set(expenseId, {
+        expenseId,
+        name: inst.expense.name,
+        nameSi: inst.expense.nameSi,
+        amount: amt,
+        quantity: qty,
+        unitSymbol: inst.expenseTemplate?.unit?.symbol || '',
+        unitSymbolSi: inst.expenseTemplate?.unit?.symbolSi || null,
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
+}
