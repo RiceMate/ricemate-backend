@@ -26,7 +26,7 @@ export async function getCategoryChildren(req: Request, res: Response, next: Nex
 // POST /api/v1/expenses/categories
 export async function createCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { name, description, parentId, isActive } = req.body;
+    const { name, nameSi, description, descriptionSi, parentId, isActive } = req.body;
     if (!name) {
       sendError(res, 'Category name is required.', 400);
       return;
@@ -34,7 +34,9 @@ export async function createCategory(req: Request, res: Response, next: NextFunc
     const created = await expenseService.createExpenseCategory(
       {
         name,
+        nameSi,
         description,
+        descriptionSi,
         parentId: parentId ? Number(parentId) : null,
         isActive: isActive !== undefined ? Boolean(isActive) : true,
       },
@@ -53,12 +55,14 @@ export async function updateCategory(req: Request, res: Response, next: NextFunc
     const id = parseInt(req.params['id'] as string, 10);
     if (isNaN(id)) { sendError(res, 'Invalid category ID.', 400); return; }
 
-    const { name, description, parentId, isActive } = req.body;
+    const { name, nameSi, description, descriptionSi, parentId, isActive } = req.body;
     const updated = await expenseService.updateExpenseCategory(
       id,
       {
         name,
+        nameSi,
         description,
+        descriptionSi,
         parentId: parentId !== undefined ? (parentId ? Number(parentId) : null) : undefined,
         isActive: isActive !== undefined ? Boolean(isActive) : undefined,
       },

@@ -15,7 +15,7 @@ export async function listIncomeSources(req: Request, res: Response, next: NextF
 // POST /api/v1/income/sources
 export async function createIncomeSource(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { name, description, defaultParcelPrice, isActive } = req.body;
+    const { name, nameSi, description, descriptionSi, defaultParcelPrice, isActive } = req.body;
     if (!name) {
       sendError(res, 'Source name is required.', 400);
       return;
@@ -23,7 +23,9 @@ export async function createIncomeSource(req: Request, res: Response, next: Next
     const created = await incomeService.createIncomeSource(
       {
         name,
+        nameSi,
         description,
+        descriptionSi,
         defaultParcelPrice: defaultParcelPrice ? Number(defaultParcelPrice) : 170,
         isActive: isActive !== undefined ? Boolean(isActive) : true,
       },
@@ -42,12 +44,14 @@ export async function updateIncomeSource(req: Request, res: Response, next: Next
     const id = parseInt(req.params['id'] as string, 10);
     if (isNaN(id)) { sendError(res, 'Invalid income source ID.', 400); return; }
 
-    const { name, description, defaultParcelPrice, isActive } = req.body;
+    const { name, nameSi, description, descriptionSi, defaultParcelPrice, isActive } = req.body;
     const updated = await incomeService.updateIncomeSource(
       id,
       {
         name,
+        nameSi,
         description,
+        descriptionSi,
         defaultParcelPrice: defaultParcelPrice !== undefined ? Number(defaultParcelPrice) : undefined,
         isActive: isActive !== undefined ? Boolean(isActive) : undefined,
       },

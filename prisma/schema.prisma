@@ -50,7 +50,9 @@ model User {
 model IncomeSource {
   id          Int      @id @default(autoincrement())
   name        String
+  nameSi      String?  @map("name_si")
   description String?
+  descriptionSi String? @map("description_si")
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -85,7 +87,9 @@ model Expense {
   id          Int      @id @default(autoincrement())
   parentId    Int?     @map("parent_id")
   name        String
+  nameSi      String?  @map("name_si")
   description String?
+  descriptionSi String? @map("description_si")
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")

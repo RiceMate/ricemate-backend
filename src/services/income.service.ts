@@ -36,7 +36,9 @@ export async function getActiveSources(includeInactive = false) {
     select: {
       id: true,
       name: true,
+      nameSi: true,
       description: true,
+      descriptionSi: true,
       defaultParcelPrice: true,
       isActive: true,
     },
@@ -49,7 +51,9 @@ export async function getActiveSources(includeInactive = false) {
 export async function createIncomeSource(
   data: {
     name: string;
+    nameSi?: string;
     description?: string;
+    descriptionSi?: string;
     defaultParcelPrice?: number;
     isActive?: boolean;
   },
@@ -62,7 +66,9 @@ export async function createIncomeSource(
   return prisma.incomeSource.create({
     data: {
       name: data.name.trim(),
+      nameSi: data.nameSi?.trim() || null,
       description: data.description?.trim() || null,
+      descriptionSi: data.descriptionSi?.trim() || null,
       defaultParcelPrice: new Decimal(data.defaultParcelPrice ?? 170),
       isActive: data.isActive ?? true,
       createdById: userId,
@@ -77,7 +83,9 @@ export async function updateIncomeSource(
   id: number,
   data: {
     name?: string;
+    nameSi?: string;
     description?: string;
+    descriptionSi?: string;
     defaultParcelPrice?: number;
     isActive?: boolean;
   },
@@ -90,7 +98,9 @@ export async function updateIncomeSource(
     where: { id },
     data: {
       ...(data.name !== undefined ? { name: data.name.trim() } : {}),
+      ...(data.nameSi !== undefined ? { nameSi: data.nameSi?.trim() || null } : {}),
       ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
+      ...(data.descriptionSi !== undefined ? { descriptionSi: data.descriptionSi?.trim() || null } : {}),
       ...(data.defaultParcelPrice !== undefined ? { defaultParcelPrice: new Decimal(data.defaultParcelPrice) } : {}),
       ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
       updatedById: userId,

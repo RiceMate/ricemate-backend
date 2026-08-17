@@ -36,7 +36,9 @@ export async function getRootCategories(includeInactive = false) {
     select: {
       id: true,
       name: true,
+      nameSi: true,
       description: true,
+      descriptionSi: true,
       isActive: true,
       _count: {
         select: {
@@ -63,7 +65,9 @@ export async function getCategoryChildren(parentId: number, includeInactive = fa
     select: {
       id: true,
       name: true,
+      nameSi: true,
       description: true,
+      descriptionSi: true,
       isActive: true,
       parentId: true,
       _count: {
@@ -81,7 +85,9 @@ export async function getCategoryChildren(parentId: number, includeInactive = fa
 export async function createExpenseCategory(
   data: {
     name: string;
+    nameSi?: string;
     description?: string;
+    descriptionSi?: string;
     parentId?: number | null;
     isActive?: boolean;
   },
@@ -99,7 +105,9 @@ export async function createExpenseCategory(
   return prisma.expense.create({
     data: {
       name: data.name.trim(),
+      nameSi: data.nameSi?.trim() || null,
       description: data.description?.trim() || null,
+      descriptionSi: data.descriptionSi?.trim() || null,
       parentId: data.parentId ?? null,
       isActive: data.isActive ?? true,
       createdById: userId,
@@ -114,7 +122,9 @@ export async function updateExpenseCategory(
   id: number,
   data: {
     name?: string;
+    nameSi?: string;
     description?: string;
+    descriptionSi?: string;
     parentId?: number | null;
     isActive?: boolean;
   },
@@ -127,7 +137,9 @@ export async function updateExpenseCategory(
     where: { id },
     data: {
       ...(data.name !== undefined ? { name: data.name.trim() } : {}),
+      ...(data.nameSi !== undefined ? { nameSi: data.nameSi?.trim() || null } : {}),
       ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
+      ...(data.descriptionSi !== undefined ? { descriptionSi: data.descriptionSi?.trim() || null } : {}),
       ...(data.parentId !== undefined ? { parentId: data.parentId } : {}),
       ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
       updatedById: userId,
