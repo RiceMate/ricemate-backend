@@ -5,6 +5,7 @@ import {
   getCategoryChildren,
   createCategory,
   updateCategory,
+  deleteCategory,
   checkExpenses,
   submitExpense,
   updateExpense,
@@ -20,6 +21,7 @@ router.get('/categories', getRootCategories);
 router.get('/categories/:id/children', getCategoryChildren);
 router.post('/categories', createCategory);
 router.put('/categories/:id', updateCategory);
+router.delete('/categories/:id', deleteCategory);
 
 // Expense instances
 router.get('/check', checkExpenses); // ?date=YYYY-MM-DD

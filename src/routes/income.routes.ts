@@ -4,6 +4,7 @@ import {
   listIncomeSources,
   createIncomeSource,
   updateIncomeSource,
+  deleteIncomeSource,
   checkIncome,
   submitIncome,
   overrideIncome,
@@ -18,6 +19,7 @@ router.use(requireAuth);
 router.get('/sources', listIncomeSources);
 router.post('/sources', createIncomeSource);
 router.put('/sources/:id', updateIncomeSource);
+router.delete('/sources/:id', deleteIncomeSource);
 
 // Income Instances
 router.get('/check', checkIncome);         // ?date=YYYY-MM-DD

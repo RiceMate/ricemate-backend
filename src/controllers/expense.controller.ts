@@ -26,7 +26,7 @@ export async function getCategoryChildren(req: Request, res: Response, next: Nex
 // POST /api/v1/expenses/categories
 export async function createCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { name, nameSi, description, descriptionSi, parentId, isActive } = req.body;
+    const { name, nameSi, description, descriptionSi, parentId, unitId, defaultUnitPrice, isActive } = req.body;
     if (!name) {
       sendError(res, 'Category name is required.', 400);
       return;
@@ -38,6 +38,8 @@ export async function createCategory(req: Request, res: Response, next: NextFunc
         description,
         descriptionSi,
         parentId: parentId ? Number(parentId) : null,
+        unitId: unitId ? Number(unitId) : undefined,
+        defaultUnitPrice: defaultUnitPrice !== undefined ? Number(defaultUnitPrice) : undefined,
         isActive: isActive !== undefined ? Boolean(isActive) : true,
       },
       req.userId
@@ -55,7 +57,7 @@ export async function updateCategory(req: Request, res: Response, next: NextFunc
     const id = parseInt(req.params['id'] as string, 10);
     if (isNaN(id)) { sendError(res, 'Invalid category ID.', 400); return; }
 
-    const { name, nameSi, description, descriptionSi, parentId, isActive } = req.body;
+    const { name, nameSi, description, descriptionSi, parentId, unitId, defaultUnitPrice, isActive } = req.body;
     const updated = await expenseService.updateExpenseCategory(
       id,
       {
@@ -64,11 +66,26 @@ export async function updateCategory(req: Request, res: Response, next: NextFunc
         description,
         descriptionSi,
         parentId: parentId !== undefined ? (parentId ? Number(parentId) : null) : undefined,
+        unitId: unitId !== undefined ? (unitId ? Number(unitId) : null) : undefined,
+        defaultUnitPrice: defaultUnitPrice !== undefined ? Number(defaultUnitPrice) : undefined,
         isActive: isActive !== undefined ? Boolean(isActive) : undefined,
       },
       req.userId
     );
     sendSuccess(res, updated, 'Category updated successfully.');
+  } catch (err) {
+    if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
+    next(err);
+  }
+}
+
+// DELETE /api/v1/expenses/categories/:id
+export async function deleteCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = parseInt(req.params['id'] as string, 10);
+    if (isNaN(id)) { sendError(res, 'Invalid category ID.', 400); return; }
+    await expenseService.deleteExpenseCategory(id);
+    sendSuccess(res, null, 'Category deleted successfully.');
   } catch (err) {
     if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
     next(err);

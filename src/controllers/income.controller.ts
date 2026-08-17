@@ -15,7 +15,7 @@ export async function listIncomeSources(req: Request, res: Response, next: NextF
 // POST /api/v1/income/sources
 export async function createIncomeSource(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { name, nameSi, description, descriptionSi, defaultParcelPrice, isActive } = req.body;
+    const { name, nameSi, description, descriptionSi, defaultParcelPrice, unitId, isActive } = req.body;
     if (!name) {
       sendError(res, 'Source name is required.', 400);
       return;
@@ -27,6 +27,7 @@ export async function createIncomeSource(req: Request, res: Response, next: Next
         description,
         descriptionSi,
         defaultParcelPrice: defaultParcelPrice ? Number(defaultParcelPrice) : 170,
+        unitId: unitId ? Number(unitId) : undefined,
         isActive: isActive !== undefined ? Boolean(isActive) : true,
       },
       req.userId
@@ -44,7 +45,7 @@ export async function updateIncomeSource(req: Request, res: Response, next: Next
     const id = parseInt(req.params['id'] as string, 10);
     if (isNaN(id)) { sendError(res, 'Invalid income source ID.', 400); return; }
 
-    const { name, nameSi, description, descriptionSi, defaultParcelPrice, isActive } = req.body;
+    const { name, nameSi, description, descriptionSi, defaultParcelPrice, unitId, isActive } = req.body;
     const updated = await incomeService.updateIncomeSource(
       id,
       {
@@ -53,11 +54,25 @@ export async function updateIncomeSource(req: Request, res: Response, next: Next
         description,
         descriptionSi,
         defaultParcelPrice: defaultParcelPrice !== undefined ? Number(defaultParcelPrice) : undefined,
+        unitId: unitId !== undefined ? (unitId ? Number(unitId) : null) : undefined,
         isActive: isActive !== undefined ? Boolean(isActive) : undefined,
       },
       req.userId
     );
     sendSuccess(res, updated, 'Income source updated successfully.');
+  } catch (err) {
+    if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
+    next(err);
+  }
+}
+
+// DELETE /api/v1/income/sources/:id
+export async function deleteIncomeSource(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = parseInt(req.params['id'] as string, 10);
+    if (isNaN(id)) { sendError(res, 'Invalid income source ID.', 400); return; }
+    await incomeService.deleteIncomeSource(id);
+    sendSuccess(res, null, 'Income source deleted successfully.');
   } catch (err) {
     if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
     next(err);

@@ -45,6 +45,32 @@ export async function getRootCategories(includeInactive = false) {
           children: includeInactive ? true : { where: { isActive: true } },
         },
       },
+      expenseTemplates: {
+        where: includeInactive ? {} : { isActive: true },
+        select: {
+          id: true,
+          unitId: true,
+          defaultUnitPrice: true,
+          isActive: true,
+          unit: {
+            select: {
+              id: true,
+              unitCategoryId: true,
+              name: true,
+              nameSi: true,
+              symbol: true,
+              symbolSi: true,
+              unitCategory: {
+                select: {
+                  id: true,
+                  name: true,
+                  nameSi: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 }
@@ -75,12 +101,38 @@ export async function getCategoryChildren(parentId: number, includeInactive = fa
           children: includeInactive ? true : { where: { isActive: true } },
         },
       },
+      expenseTemplates: {
+        where: includeInactive ? {} : { isActive: true },
+        select: {
+          id: true,
+          unitId: true,
+          defaultUnitPrice: true,
+          isActive: true,
+          unit: {
+            select: {
+              id: true,
+              unitCategoryId: true,
+              name: true,
+              nameSi: true,
+              symbol: true,
+              symbolSi: true,
+              unitCategory: {
+                select: {
+                  id: true,
+                  name: true,
+                  nameSi: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 }
 
 /**
- * Creates a new expense category.
+ * Creates a new expense category and optional expense_template.
  */
 export async function createExpenseCategory(
   data: {
@@ -89,6 +141,8 @@ export async function createExpenseCategory(
     description?: string;
     descriptionSi?: string;
     parentId?: number | null;
+    unitId?: number;
+    defaultUnitPrice?: number;
     isActive?: boolean;
   },
   userId: number
@@ -102,7 +156,7 @@ export async function createExpenseCategory(
     if (!parent) throw new AppError(`Parent category ${data.parentId} not found.`, 404);
   }
 
-  return prisma.expense.create({
+  const category = await prisma.expense.create({
     data: {
       name: data.name.trim(),
       nameSi: data.nameSi?.trim() || null,
@@ -113,10 +167,25 @@ export async function createExpenseCategory(
       createdById: userId,
     },
   });
+
+  if (data.unitId) {
+    await prisma.expenseTemplate.create({
+      data: {
+        expenseId: category.id,
+        name: category.name,
+        unitId: Number(data.unitId),
+        defaultUnitPrice: data.defaultUnitPrice ? Number(data.defaultUnitPrice) : 0,
+        isActive: true,
+        createdById: userId,
+      },
+    });
+  }
+
+  return category;
 }
 
 /**
- * Updates an existing expense category.
+ * Updates an existing expense category and updates expense_template accordingly.
  */
 export async function updateExpenseCategory(
   id: number,
@@ -126,6 +195,8 @@ export async function updateExpenseCategory(
     description?: string;
     descriptionSi?: string;
     parentId?: number | null;
+    unitId?: number | null;
+    defaultUnitPrice?: number;
     isActive?: boolean;
   },
   userId: number
@@ -133,7 +204,7 @@ export async function updateExpenseCategory(
   const existing = await prisma.expense.findUnique({ where: { id } });
   if (!existing) throw new AppError(`Expense category ${id} not found.`, 404);
 
-  return prisma.expense.update({
+  const updatedCategory = await prisma.expense.update({
     where: { id },
     data: {
       ...(data.name !== undefined ? { name: data.name.trim() } : {}),
@@ -145,6 +216,93 @@ export async function updateExpenseCategory(
       updatedById: userId,
     },
   });
+
+  if (data.unitId !== undefined) {
+    if (data.unitId) {
+      const existingTemplate = await prisma.expenseTemplate.findFirst({
+        where: { expenseId: id },
+      });
+
+      if (existingTemplate) {
+        await prisma.expenseTemplate.update({
+          where: { id: existingTemplate.id },
+          data: {
+            unitId: Number(data.unitId),
+            name: data.name?.trim() || existing.name,
+            ...(data.defaultUnitPrice !== undefined ? { defaultUnitPrice: Number(data.defaultUnitPrice) } : {}),
+            updatedById: userId,
+          },
+        });
+      } else {
+        await prisma.expenseTemplate.create({
+          data: {
+            expenseId: id,
+            name: data.name?.trim() || existing.name,
+            unitId: Number(data.unitId),
+            defaultUnitPrice: data.defaultUnitPrice ? Number(data.defaultUnitPrice) : 0,
+            isActive: true,
+            createdById: userId,
+          },
+        });
+      }
+    }
+  } else if (data.defaultUnitPrice !== undefined) {
+    const existingTemplate = await prisma.expenseTemplate.findFirst({
+      where: { expenseId: id },
+    });
+    if (existingTemplate) {
+      await prisma.expenseTemplate.update({
+        where: { id: existingTemplate.id },
+        data: {
+          defaultUnitPrice: Number(data.defaultUnitPrice),
+          updatedById: userId,
+        },
+      });
+    }
+  }
+
+  return updatedCategory;
+}
+
+/**
+ * Deletes an expense category, along with its templates and subcategories.
+ */
+export async function deleteExpenseCategory(id: number) {
+  const existing = await prisma.expense.findUnique({
+    where: { id },
+    include: {
+      children: true,
+      expenseInstances: true,
+    },
+  });
+  if (!existing) throw new AppError(`Expense category ${id} not found.`, 404);
+
+  try {
+    const allCategoryIds = [id, ...existing.children.map((c) => c.id)];
+
+    // Delete templates for category and its children
+    await prisma.expenseTemplate.deleteMany({
+      where: { expenseId: { in: allCategoryIds } },
+    });
+
+    // Delete subcategories
+    await prisma.expense.deleteMany({
+      where: { parentId: id },
+    });
+
+    // Delete the category itself
+    return await prisma.expense.delete({
+      where: { id },
+    });
+  } catch (err: any) {
+    if (err.code === 'P2003') {
+      return await prisma.expense.update({
+        where: { id },
+        data: { isActive: false },
+      });
+    }
+    throw err;
+  }
 }
 
 /**

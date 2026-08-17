@@ -59,12 +59,14 @@ model IncomeSource {
 
   // Price per parcel — used to calculate income amount from parcel count
   defaultParcelPrice Decimal @default(0) @map("default_parcel_price") @db.Decimal(12, 2)
+  unitId             Int?    @map("unit_id")
 
   // Audit FK
   createdById Int  @map("created_by")
   updatedById Int? @map("updated_by")
 
   // Relations
+  unit            Unit?            @relation(fields: [unitId], references: [id])
   createdBy       User             @relation("IncomeSourceCreatedBy", fields: [createdById], references: [id])
   updatedBy       User?            @relation("IncomeSourceUpdatedBy", fields: [updatedById], references: [id])
   incomeInstances IncomeInstance[]
@@ -144,12 +146,14 @@ model IncomeInstance {
 // e.g., Weight, Volume, Count
 // ─────────────────────────────────────────────────────────────────────────────
 model UnitCategory {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            Int      @id @default(autoincrement())
+  name          String
+  nameSi        String?  @map("name_si")
+  description   String?
+  descriptionSi String?  @map("description_si")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   // Relations
   units Unit[]
@@ -166,7 +170,9 @@ model Unit {
   id             Int      @id @default(autoincrement())
   unitCategoryId Int      @map("unit_category_id")
   name           String
+  nameSi         String?  @map("name_si")
   symbol         String
+  symbolSi       String?  @map("symbol_si")
   isActive       Boolean  @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
@@ -174,6 +180,7 @@ model Unit {
   // Relations
   unitCategory     UnitCategory      @relation(fields: [unitCategoryId], references: [id])
   expenseTemplates ExpenseTemplate[]
+  incomeSources    IncomeSource[]
 
   @@map("unit")
 }

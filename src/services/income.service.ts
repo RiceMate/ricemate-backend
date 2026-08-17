@@ -27,7 +27,7 @@ function parseDate(dateStr: string): Date {
 // ─── Service Functions ────────────────────────────────────────────────────────
 
 /**
- * Returns income sources with their default parcel price.
+ * Returns income sources with their default parcel price and unit.
  */
 export async function getActiveSources(includeInactive = false) {
   return prisma.incomeSource.findMany({
@@ -40,6 +40,24 @@ export async function getActiveSources(includeInactive = false) {
       description: true,
       descriptionSi: true,
       defaultParcelPrice: true,
+      unitId: true,
+      unit: {
+        select: {
+          id: true,
+          unitCategoryId: true,
+          name: true,
+          nameSi: true,
+          symbol: true,
+          symbolSi: true,
+          unitCategory: {
+            select: {
+              id: true,
+              name: true,
+              nameSi: true,
+            },
+          },
+        },
+      },
       isActive: true,
     },
   });
@@ -55,6 +73,7 @@ export async function createIncomeSource(
     description?: string;
     descriptionSi?: string;
     defaultParcelPrice?: number;
+    unitId?: number;
     isActive?: boolean;
   },
   userId: number
@@ -70,6 +89,7 @@ export async function createIncomeSource(
       description: data.description?.trim() || null,
       descriptionSi: data.descriptionSi?.trim() || null,
       defaultParcelPrice: new Decimal(data.defaultParcelPrice ?? 170),
+      unitId: data.unitId ? Number(data.unitId) : null,
       isActive: data.isActive ?? true,
       createdById: userId,
     },
@@ -87,6 +107,7 @@ export async function updateIncomeSource(
     description?: string;
     descriptionSi?: string;
     defaultParcelPrice?: number;
+    unitId?: number | null;
     isActive?: boolean;
   },
   userId: number
@@ -102,10 +123,36 @@ export async function updateIncomeSource(
       ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
       ...(data.descriptionSi !== undefined ? { descriptionSi: data.descriptionSi?.trim() || null } : {}),
       ...(data.defaultParcelPrice !== undefined ? { defaultParcelPrice: new Decimal(data.defaultParcelPrice) } : {}),
+      ...(data.unitId !== undefined ? { unitId: data.unitId ? Number(data.unitId) : null } : {}),
       ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
       updatedById: userId,
     },
   });
+}
+
+/**
+ * Deletes an income source.
+ */
+export async function deleteIncomeSource(id: number) {
+  const existing = await prisma.incomeSource.findUnique({
+    where: { id },
+    include: { incomeInstances: true },
+  });
+  if (!existing) throw new AppError(`Income source ${id} not found.`, 404);
+
+  try {
+    return await prisma.incomeSource.delete({
+      where: { id },
+    });
+  } catch (err: any) {
+    if (err.code === 'P2003') {
+      return await prisma.incomeSource.update({
+        where: { id },
+        data: { isActive: false },
+      });
+    }
+    throw err;
+  }
 }
 
 /**
