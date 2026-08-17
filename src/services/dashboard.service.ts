@@ -36,13 +36,31 @@ async function sumExpenses(gte: Date, lte: Date): Promise<number> {
   return toNum(result._sum.amount);
 }
 
+const COLOMBO_TIMEZONE = 'Asia/Colombo';
+
+export function getColomboTodayStr(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: COLOMBO_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  } catch {
+    const d = new Date();
+    const utcMs = d.getTime() + d.getTimezoneOffset() * 60000;
+    const colombo = new Date(utcMs + 5.5 * 3600000);
+    return colombo.toISOString().slice(0, 10);
+  }
+}
+
 // ─── Service Functions ────────────────────────────────────────────────────────
 
 /**
- * Today's income, expenses, and profit.
+ * Today's income, expenses, and profit in Colombo Time.
  */
 export async function getTodaySummary() {
-  const today = utcDate(new Date().toISOString().slice(0, 10));
+  const today = utcDate(getColomboTodayStr());
   const income   = await sumIncome(today, today);
   const expenses = await sumExpenses(today, today);
   return {
@@ -54,11 +72,11 @@ export async function getTodaySummary() {
 }
 
 /**
- * Daily profit for the 7 days ending on `dateStr` (or today if omitted).
+ * Daily profit for the 7 days ending on `dateStr` (or Colombo today if omitted).
  * Returns an array of { date, income, expenses, profit } — one entry per day.
  */
 export async function getDailySummary(dateStr?: string) {
-  const endDate = utcDate(dateStr ?? new Date().toISOString().slice(0, 10));
+  const endDate = utcDate(dateStr ?? getColomboTodayStr());
   const days: { date: string; income: number; expenses: number; profit: number }[] = [];
 
   for (let i = 6; i >= 0; i--) {
@@ -156,8 +174,8 @@ function resolveDateRange(params: { date?: string; year?: number; month?: number
     const end = new Date(Date.UTC(params.year, 11, 31));
     return { start, end };
   }
-  // Default to today
-  const today = utcDate(new Date().toISOString().slice(0, 10));
+  // Default to Colombo today
+  const today = utcDate(getColomboTodayStr());
   return { start: today, end: today };
 }
 

@@ -18,10 +18,11 @@ export interface SubmitIncomeDto {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function parseDate(dateStr: string): Date {
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) throw new AppError(`Invalid date: ${dateStr}`, 400);
-  // Normalize to midnight UTC to match @db.Date
-  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const parts = dateStr.slice(0, 10).split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) {
+    throw new AppError(`Invalid date: ${dateStr}`, 400);
+  }
+  return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
 }
 
 // ─── Service Functions ────────────────────────────────────────────────────────
