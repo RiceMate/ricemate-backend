@@ -9,11 +9,21 @@ import {
   createUnit,
   updateUnit,
   deleteUnit,
+  listUnitPresets,
+  createUnitPreset,
+  updateUnitPreset,
+  deleteUnitPreset,
 } from '../controllers/unit.controller';
 
 const router = Router();
 
 router.use(requireAuth);
+
+// Unit Presets
+router.get('/presets', listUnitPresets);
+router.post('/presets', createUnitPreset);
+router.put('/presets/:id', updateUnitPreset);
+router.delete('/presets/:id', deleteUnitPreset);
 
 // Unit Categories
 router.get('/categories', listUnitCategories);

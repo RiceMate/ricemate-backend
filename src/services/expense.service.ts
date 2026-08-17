@@ -321,7 +321,7 @@ export async function checkExpensesForDate(dateStr: string) {
 }
 
 /**
- * Submits a single expense entry.
+ * Submits a single expense entry. If an entry already exists for the same date and category, updates it.
  */
 export async function submitExpense(dto: SubmitExpenseDto, userId: number) {
   const date = parseDate(dto.date);
@@ -329,6 +329,31 @@ export async function submitExpense(dto: SubmitExpenseDto, userId: number) {
   const category = await prisma.expense.findUnique({ where: { id: dto.expenseId } });
   if (!category || !category.isActive) {
     throw new AppError(`Expense category ${dto.expenseId} not found or inactive.`, 404);
+  }
+
+  // Check if an expense entry already exists for this category on this date
+  const existing = await prisma.expenseInstance.findFirst({
+    where: {
+      date,
+      expenseId: dto.expenseId,
+    },
+  });
+
+  if (existing) {
+    return prisma.expenseInstance.update({
+      where: { id: existing.id },
+      data: {
+        expenseTemplateId: dto.expenseTemplateId ?? existing.expenseTemplateId,
+        quantity: dto.quantity,
+        unitPrice: dto.unitPrice,
+        amount: dto.amount,
+        description: dto.description ?? existing.description,
+        updatedById: userId,
+      },
+      include: {
+        expense: { select: { id: true, name: true } },
+      },
+    });
   }
 
   return prisma.expenseInstance.create({

@@ -125,3 +125,70 @@ export async function deleteUnit(req: Request, res: Response, next: NextFunction
     next(err);
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unit Quantity Presets Controller
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/v1/units/presets
+export async function listUnitPresets(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const includeInactive = req.query['includeInactive'] === 'true';
+    const unitId = req.query['unitId'] ? parseInt(req.query['unitId'] as string, 10) : undefined;
+    const presets = await unitService.getUnitPresets(unitId, includeInactive);
+    sendSuccess(res, presets);
+  } catch (err) { next(err); }
+}
+
+// POST /api/v1/units/presets
+export async function createUnitPreset(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { unitId, value, label, labelSi, sortOrder, isActive } = req.body;
+    const created = await unitService.createUnitPreset({
+      unitId: Number(unitId),
+      value: Number(value),
+      label,
+      labelSi,
+      sortOrder: sortOrder !== undefined ? Number(sortOrder) : undefined,
+      isActive,
+    });
+    sendCreated(res, created, 'Unit preset created successfully.');
+  } catch (err) {
+    if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
+    next(err);
+  }
+}
+
+// PUT /api/v1/units/presets/:id
+export async function updateUnitPreset(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = parseInt(req.params['id'] as string, 10);
+    if (isNaN(id)) { sendError(res, 'Invalid preset ID.', 400); return; }
+    const { unitId, value, label, labelSi, sortOrder, isActive } = req.body;
+    const updated = await unitService.updateUnitPreset(id, {
+      unitId: unitId !== undefined ? Number(unitId) : undefined,
+      value: value !== undefined ? Number(value) : undefined,
+      label,
+      labelSi,
+      sortOrder: sortOrder !== undefined ? Number(sortOrder) : undefined,
+      isActive,
+    });
+    sendSuccess(res, updated, 'Unit preset updated successfully.');
+  } catch (err) {
+    if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
+    next(err);
+  }
+}
+
+// DELETE /api/v1/units/presets/:id
+export async function deleteUnitPreset(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = parseInt(req.params['id'] as string, 10);
+    if (isNaN(id)) { sendError(res, 'Invalid preset ID.', 400); return; }
+    await unitService.deleteUnitPreset(id);
+    sendSuccess(res, null, 'Unit preset deleted successfully.');
+  } catch (err) {
+    if (err instanceof AppError) { sendError(res, err.message, err.statusCode); return; }
+    next(err);
+  }
+}

@@ -9,6 +9,12 @@ export async function getUnitCategories(includeInactive = false) {
       units: {
         where: includeInactive ? {} : { isActive: true },
         orderBy: { id: 'asc' },
+        include: {
+          quantityPresets: {
+            where: includeInactive ? {} : { isActive: true },
+            orderBy: { sortOrder: 'asc' },
+          },
+        },
       },
     },
   });
@@ -24,6 +30,10 @@ export async function getUnits(includeInactive = false, unitCategoryId?: number)
     include: {
       unitCategory: {
         select: { id: true, name: true, nameSi: true },
+      },
+      quantityPresets: {
+        where: includeInactive ? {} : { isActive: true },
+        orderBy: { sortOrder: 'asc' },
       },
     },
   });
@@ -146,4 +156,103 @@ export async function deleteUnit(id: number) {
     }
     throw err;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unit Presets CRUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getUnitPresets(unitId?: number, includeInactive = false) {
+  return prisma.unitQuantityPreset.findMany({
+    where: {
+      ...(includeInactive ? {} : { isActive: true }),
+      ...(unitId ? { unitId } : {}),
+    },
+    orderBy: [
+      { unitId: 'asc' },
+      { sortOrder: 'asc' },
+      { value: 'asc' },
+    ],
+    include: {
+      unit: {
+        select: {
+          id: true,
+          name: true,
+          nameSi: true,
+          symbol: true,
+          symbolSi: true,
+          unitCategoryId: true,
+        },
+      },
+    },
+  });
+}
+
+export async function createUnitPreset(data: {
+  unitId: number;
+  value: number;
+  label?: string;
+  labelSi?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}) {
+  if (!data.unitId || data.value === undefined || data.value === null || data.value <= 0) {
+    throw new AppError('unitId and a positive value are required.', 400);
+  }
+
+  const unit = await prisma.unit.findUnique({ where: { id: data.unitId } });
+  if (!unit) throw new AppError(`Unit ${data.unitId} not found.`, 404);
+
+  return prisma.unitQuantityPreset.create({
+    data: {
+      unitId: data.unitId,
+      value: data.value,
+      label: data.label?.trim() || null,
+      labelSi: data.labelSi?.trim() || null,
+      sortOrder: data.sortOrder ?? 0,
+      isActive: data.isActive ?? true,
+    },
+    include: {
+      unit: true,
+    },
+  });
+}
+
+export async function updateUnitPreset(
+  id: number,
+  data: {
+    unitId?: number;
+    value?: number;
+    label?: string;
+    labelSi?: string;
+    sortOrder?: number;
+    isActive?: boolean;
+  }
+) {
+  const existing = await prisma.unitQuantityPreset.findUnique({ where: { id } });
+  if (!existing) throw new AppError(`Unit preset ${id} not found.`, 404);
+
+  return prisma.unitQuantityPreset.update({
+    where: { id },
+    data: {
+      ...(data.unitId !== undefined ? { unitId: data.unitId } : {}),
+      ...(data.value !== undefined ? { value: data.value } : {}),
+      ...(data.label !== undefined ? { label: data.label?.trim() || null } : {}),
+      ...(data.labelSi !== undefined ? { labelSi: data.labelSi?.trim() || null } : {}),
+      ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
+      ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+    },
+    include: {
+      unit: true,
+    },
+  });
+}
+
+export async function deleteUnitPreset(id: number) {
+  const existing = await prisma.unitQuantityPreset.findUnique({ where: { id } });
+  if (!existing) throw new AppError(`Unit preset ${id} not found.`, 404);
+
+  return prisma.unitQuantityPreset.delete({
+    where: { id },
+  });
 }
