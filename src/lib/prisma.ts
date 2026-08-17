@@ -33,6 +33,7 @@ const MODELS_WITH_TIMESTAMPS = new Set([
   'ExpenseInstance',
   'IncomeInstance',
   'UnitQuantityPreset',
+  'Wastage',
 ]);
 const MODELS_WITH_CREATED_ONLY = new Set(['AuditLog']);
 
